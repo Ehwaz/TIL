@@ -47,7 +47,7 @@ import org.scalatest.junit.JUnitRunner
    * This allows tests to be written in a more readable manner:
    */
   test("one plus one is three?") {
-    assert(1 + 1 == 3) // This assertion fails! Go ahead and fix it.
+    assert(1 + 1 != 3) // This assertion fails! Go ahead and fix it.
   }
 
 
@@ -121,6 +121,14 @@ import org.scalatest.junit.JUnitRunner
     assert(max(List(3, 7, 2)) === 7)
   }
 
+  test("max of same numbers") {
+    assert(max(List(3, 3, 3)) === 3)
+  }
 
+  test("max of an empty list") {
+    val thrownException = intercept[NoSuchElementException] {
+      max(List())
+    }
+  }
 
 }
