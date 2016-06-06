@@ -110,5 +110,50 @@ class FunSetSuite extends FunSuite {
     }
   }
 
+  test("intersect contains the common elements only") {
+    new TestSets {
+      val a = union(s1, s2)
+      val b = union(s1, s3)
+      val c = intersect(a, b)
+      assert(contains(c, 1), "intersect 1")
+      assert(!contains(c, 2), "intersect 2")
+      assert(!contains(c, 3), "intersect 3")
+    }
+  }
 
+  test("diff contains the difference of the two given sets") {
+    new TestSets {
+      val a = union(s1, s2)
+      val b = union(s1, s3)
+      val c = diff(a, b)
+      assert(contains(c, 2), "diff 1")
+      assert(!contains(c, 1), "diff 2")
+      assert(!contains(c, 3), "diff 3")
+    }
+  }
+
+  test("filter returns subset of the given set which satisfies the given predicate") {
+    new TestSets {
+      val a = union(s1, s2)
+      val b = union(a, s3)
+      val c = filter(b, x => (x != 2) && (x != 3))
+      assert(contains(c, 1), "filter 1")
+      assert(!contains(c, 2), "filter 2")
+      assert(!contains(c, 3), "filter 3")
+    }
+  }
+
+  test("map returns a new set whose elements are transformed by the given function") {
+    new TestSets {
+      val a = union(s1, s2)
+      val b = union(a, s3)
+      val c = map(b, x => 2 * x)
+      assert(contains(c, 2), "map 2")
+      assert(contains(c, 4), "map 4")
+      assert(contains(c, 6), "map 6")
+      assert(!contains(c, 1), "map 1")
+      assert(!contains(c, 5), "map 5")
+      assert(!contains(c, 3), "map 3")
+    }
+  }
 }
