@@ -2,6 +2,9 @@ package objsets
 
 import TweetReader._
 
+import scala.annotation.tailrec
+import scala.util.Try
+
 /**
  * A class to represent tweets.
  */
@@ -41,7 +44,7 @@ abstract class TweetSet {
    * Question: Can we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-    def filter(p: Tweet => Boolean): TweetSet = ???
+    def filter(p: Tweet => Boolean): TweetSet = filterAcc(p, new Empty)
   
   /**
    * This is a helper method for `filter` that propagetes the accumulated tweets.
@@ -54,7 +57,7 @@ abstract class TweetSet {
    * Question: Should we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-    def union(that: TweetSet): TweetSet = ???
+    def union(that: TweetSet): TweetSet
   
   /**
    * Returns the tweet from this set which has the greatest retweet count.
@@ -65,8 +68,8 @@ abstract class TweetSet {
    * Question: Should we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-    def mostRetweeted: Tweet = ???
-  
+    def mostRetweeted: Tweet
+
   /**
    * Returns a list containing all tweets of this set, sorted by retweet count
    * in descending order. In other words, the head of the resulting list should
@@ -76,7 +79,7 @@ abstract class TweetSet {
    * Question: Should we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-    def descendingByRetweet: TweetList = ???
+    def descendingByRetweet: TweetList
   
   /**
    * The following methods are already implemented
@@ -107,8 +110,14 @@ abstract class TweetSet {
 }
 
 class Empty extends TweetSet {
-    def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = ???
-  
+  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = acc
+
+  def union(that: TweetSet): TweetSet = that
+
+  def mostRetweeted: Tweet = throw new java.util.NoSuchElementException
+
+  def descendingByRetweet: TweetList = Nil
+
   /**
    * The following methods are already implemented
    */
@@ -124,9 +133,46 @@ class Empty extends TweetSet {
 
 class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
 
-    def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = ???
-  
-    
+  def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = {
+    val acc2 = if (p(elem)) acc.incl(elem) else acc
+    right.filterAcc(p, left.filterAcc(p, acc2))
+  }
+
+  /*
+    Ref1: https://www.coursera.org/learn/progfun1/discussions/weeks/3/threads/AzJ-4CLYEeag6wpD-92Rcw
+    Ref2: http://www.socouldanyone.com/2014/12/scala-bility.html
+
+    Time complexity of union varies with the actual implementation.
+    Complexity of recursive function depends on the depth of function call.
+
+    Let's consider following 3 different implementation of union.
+    def union1(that: TweetSet): TweetSet = right.union(left.union(that)).incl(elem)
+    def union2(that: TweetSet): TweetSet = right.union(that).union(left).incl(elem)
+    def union3(that: TweetSet): TweetSet = right.union(left.union(that.incl(elem)))
+
+    If two TweetSet 'this' and 'that' whose size is N is unioned,
+    1) union1 first digs into this.left(= O(N/2)), digs into this.right(= O(N/2),
+      then executes an binary tree insert operation on each recursive call.(= x O(log(N)))
+      Complexity of this execution is O(N log(N)).
+    2) union2 first digs into this.right(= O(N/2), and then digs into the result of this.right.union(that).
+      As size of the resulting TweetSet grows when this.right.union(that) is executed,
+      complexity of (result).union(left) is O(N * N/2) = O(N^2).
+      As all function call includes incl call, overall complexity is O(N^2 * log(N)^2).
+    3) union3 works similar way as union1, but it can optimize memory usage in the same way as tail recursion.
+   */
+  def union(that: TweetSet): TweetSet = right.union(left.union(that.incl(elem)))
+
+  def mostRetweeted: Tweet = {
+    val leftMost = Try(left.mostRetweeted).getOrElse(new Tweet("", "", 0))
+    val rightMost = Try(right.mostRetweeted).getOrElse(new Tweet("", "", 0))
+    List(elem, leftMost, rightMost).reduceLeft((l, r) => if (l.retweets > r.retweets) l else r)
+  }
+
+  def descendingByRetweet: TweetList = {
+    val maxTweet = this.mostRetweeted
+    new Cons(maxTweet, this.remove(maxTweet).descendingByRetweet)
+  }
+
   /**
    * The following methods are already implemented
    */
@@ -180,14 +226,22 @@ object GoogleVsApple {
   val google = List("android", "Android", "galaxy", "Galaxy", "nexus", "Nexus")
   val apple = List("ios", "iOS", "iphone", "iPhone", "ipad", "iPad")
 
-    lazy val googleTweets: TweetSet = ???
-  lazy val appleTweets: TweetSet = ???
+  def checkKeyword(keywordList: List[String])(p: Tweet): Boolean = {
+    var isExist = false
+    for (keyword <- keywordList) {
+      if (p.text.contains(keyword)) isExist = true
+    }
+    isExist
+  }
+
+  lazy val googleTweets: TweetSet = TweetReader.allTweets.filter(p => checkKeyword(google)(p))
+  lazy val appleTweets: TweetSet = TweetReader.allTweets.filter(p => checkKeyword(apple)(p))
   
   /**
    * A list of all tweets mentioning a keyword from either apple or google,
    * sorted by the number of retweets.
    */
-     lazy val trending: TweetList = ???
+     lazy val trending: TweetList = googleTweets.union(appleTweets).descendingByRetweet
   }
 
 object Main extends App {
