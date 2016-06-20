@@ -33,6 +33,10 @@ class HuffmanSuite extends FunSuite {
     assert(string2Chars("hello, world") === List('h', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd'))
   }
 
+  test("times test") {
+    assert( (times(List('a', 'b', 'a')) === List(('a', 2), ('b', 1))) ||
+      (times(List('a', 'b', 'a')) === List(('b', 1), ('a', 2))) )
+  }
 
   test("makeOrderedLeafList for some frequency table") {
     assert(makeOrderedLeafList(List(('t', 2), ('e', 1), ('x', 3))) === List(Leaf('e',1), Leaf('t',2), Leaf('x',3)))
@@ -44,6 +48,10 @@ class HuffmanSuite extends FunSuite {
     assert(combine(leaflist) === List(Fork(Leaf('e',1),Leaf('t',2),List('e', 't'),3), Leaf('x',4)))
   }
 
+  test("Testing termination of createCodeTree") {
+    val codeTree = createCodeTree("tobeornottobethatisthequestion".toList)
+  }
+
 
   test("decode and encode a very short text should be identity") {
     new TestTrees {
@@ -51,4 +59,20 @@ class HuffmanSuite extends FunSuite {
     }
   }
 
+  test("Test using frenchcode table") {
+    new TestTrees {
+      assert(decode(frenchCode, encode(frenchCode)("thisisanteststring".toList)) === "thisisanteststring".toList)
+      assert(decode(frenchCode, encode(frenchCode)("tobeornottobethatisthequestion".toList)) === "tobeornottobethatisthequestion".toList)
+    }
+  }
+
+  test("Test using quickencode function and frenchcode table") {
+    new TestTrees {
+      def isSame(str: String) = assert(quickEncode(frenchCode)(str.toList) === encode(frenchCode)(str.toList))
+
+      isSame("abcde")
+      isSame("thisisanteststring")
+      isSame("tobeornottobethatisthequestion")
+    }
+  }
 }
