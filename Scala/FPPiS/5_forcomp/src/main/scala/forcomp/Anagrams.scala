@@ -38,9 +38,9 @@ object Anagrams {
 
   /** Converts a sentence into its character occurrence list. */
   def sentenceOccurrences(s: Sentence): Occurrences = {
-    val x = s.flatMap(wordOccurrences).groupBy{ case (a, b) => a }
-    //x.map{ case (a, b) => (a, b.foldLeft(0)(_ + _))}
-    s.flatMap(wordOccurrences).sortBy(x => x._1)
+    val x = s.flatMap(wordOccurrences).groupBy(x => x._1)
+    val y = x.map{ case (a, b) => (a, b.foldLeft(0)( (a, b) => a + b._2))}.toList.sortBy(_._1)
+    y
   }
 
   /** The `dictionaryByOccurrences` is a `Map` from different occurrences to a sequence of all
@@ -110,6 +110,8 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
+  // TODO: Use the hint given in assignment description:
+  //    "Hint: you can use `foldLeft`, and `-`, `apply` and `updated` operations on `Map`."
   def subtract(x: Occurrences, y: Occurrences): Occurrences = (x, y) match {
     case (List(), List()) => List()
     case (List(), yList) => List()
@@ -175,8 +177,7 @@ object Anagrams {
         val possibleSubOccurs = combinations(curOccur)
         for {
           subOccur <- possibleSubOccurs.filter(_.length > 0)
-          val a = occurenceAnagrams(subOccur)
-          subOccurWord <- a
+          subOccurWord <- occurenceAnagrams(subOccur)
           if (subOccurWord != Nil)
           c <- getAnagram(subtract(occur, subOccur))
         } yield {
