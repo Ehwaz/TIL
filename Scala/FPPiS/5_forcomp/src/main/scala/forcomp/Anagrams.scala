@@ -34,10 +34,14 @@ object Anagrams {
    *
    *  Note: you must use `groupBy` to implement this method!
    */
-  def wordOccurrences(w: Word): Occurrences = ???
+  def wordOccurrences(w: Word): Occurrences = w.toLowerCase.toList.groupBy(identity).map(sameChar => (sameChar._1, sameChar._2.length)).toList.sortBy(_._1)
 
   /** Converts a sentence into its character occurrence list. */
-  def sentenceOccurrences(s: Sentence): Occurrences = ???
+  def sentenceOccurrences(s: Sentence): Occurrences = {
+    val x = s.flatMap(wordOccurrences).groupBy{ case (a, b) => a }
+    //x.map{ case (a, b) => (a, b.foldLeft(0)(_ + _))}
+    s.flatMap(wordOccurrences).sortBy(x => x._1)
+  }
 
   /** The `dictionaryByOccurrences` is a `Map` from different occurrences to a sequence of all
    *  the words that have that occurrence count.
@@ -54,10 +58,12 @@ object Anagrams {
    *    List(('a', 1), ('e', 1), ('t', 1)) -> Seq("ate", "eat", "tea")
    *
    */
-  lazy val dictionaryByOccurrences: Map[Occurrences, List[Word]] = ???
+  lazy val dictionaryByOccurrences: Map[Occurrences, List[Word]] = dictionary.groupBy(wordOccurrences(_))
 
   /** Returns all the anagrams of a given word. */
-  def wordAnagrams(word: Word): List[Word] = ???
+  def wordAnagrams(word: Word): List[Word] = dictionaryByOccurrences.getOrElse(wordOccurrences(word), List())
+
+  def occurenceAnagrams(occur: Occurrences): List[Word] = dictionaryByOccurrences.getOrElse(occur, List())
 
   /** Returns the list of all subsets of the occurrence list.
    *  This includes the occurrence itself, i.e. `List(('k', 1), ('o', 1))`
@@ -81,7 +87,18 @@ object Anagrams {
    *  Note that the order of the occurrence list subsets does not matter -- the subsets
    *  in the example above could have been displayed in some other order.
    */
-  def combinations(occurrences: Occurrences): List[Occurrences] = ???
+  // Reference: http://stackoverflow.com/a/24172754
+  // I encountered above article while searching for the common usage of scala for-comprehension.
+  // I tried to come up with better solution, but for now I think I should 'repeat and learn'.
+  def combinations(occurrences: Occurrences): List[Occurrences] = occurrences match {
+    case List() => List(Nil)
+    case (ch, cnt) :: tail =>
+      val tailResult = combinations(tail)
+      tailResult ::: (for {
+        i <- tailResult
+        j <- 1 to cnt
+      } yield (ch, j) :: i)
+  }
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
    *
@@ -93,7 +110,21 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = ???
+  def subtract(x: Occurrences, y: Occurrences): Occurrences = (x, y) match {
+    case (List(), List()) => List()
+    case (List(), yList) => List()
+    case (xList, List()) => xList
+    case (xList, yList) => {
+      val xHead = xList.head
+      val yHead = yList.head
+      if (xHead._1 == yHead._1) {
+        (xHead._2 - yHead._2) match {
+          case x if (x <= 0) => subtract(xList.tail, yList.tail)
+          case _ => List((xHead._1, xHead._2 - yHead._2)) ::: subtract(xList.tail, yList.tail)
+        }
+      } else List((xHead._1, xHead._2)) ::: subtract(xList.tail, yList)
+    }
+  }
 
   /** Returns a list of all anagram sentences of the given sentence.
    *
@@ -135,5 +166,24 @@ object Anagrams {
    *
    *  Note: There is only one anagram of an empty sentence.
    */
-  def sentenceAnagrams(sentence: Sentence): List[Sentence] = ???
+  def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
+    val occurOfSentence = sentenceOccurrences(sentence)
+
+    def getAnagram(occur: Occurrences): List[Sentence] = occur match {
+      case List() => List(Nil)
+      case curOccur => {
+        val possibleSubOccurs = combinations(curOccur)
+        for {
+          subOccur <- possibleSubOccurs.filter(_.length > 0)
+          val a = occurenceAnagrams(subOccur)
+          subOccurWord <- a
+          if (subOccurWord != Nil)
+          c <- getAnagram(subtract(occur, subOccur))
+        } yield {
+          List(subOccurWord) ::: c
+        }
+      }
+    }
+    getAnagram(occurOfSentence)
+  }
 }
